@@ -9,6 +9,7 @@ import { initNavigation } from './navigation.js';
 import { initFileUpload } from './fileUpload.js';
 import { initAIChat } from './components/aiChat.js';
 import { initAIInsights } from './components/aiInsights.js';
+import { initOnboarding } from './components/onboarding.js';
 import '../styles/index.css';
 
 /**
@@ -17,27 +18,42 @@ import '../styles/index.css';
 async function initApp() {
     console.log('Wagdy Investment Dashboard - Initializing...');
 
-    // Initialize charts
-    initializeCharts(Chart);
-
     // Initialize navigation
     initNavigation();
 
     // Initialize file upload
     initFileUpload();
 
-    // Initialize AI components
-    initAIChat();
+    // Initialize onboarding (will show empty state if no data)
+    initOnboarding();
 
-    // Load AI insights (async, non-blocking)
-    initAIInsights('#summary').catch(err => {
-        console.warn('AI Insights failed to load:', err.message);
-    });
+    // Check if we have data loaded (demo or uploaded)
+    const hasData = localStorage.getItem('dashboardData');
+
+    if (hasData) {
+        // Initialize charts only if data is available
+        initializeCharts(Chart);
+
+        // Initialize AI components
+        initAIChat();
+
+        // Load AI insights (async, non-blocking)
+        initAIInsights('#summary').catch(err => {
+            console.warn('AI Insights failed to load:', err.message);
+        });
+    }
 
     // Listen for file processing events
     window.addEventListener('fileProcessed', (e) => {
         console.log('File processed:', e.detail.fileName);
-        // TODO: Refresh dashboard with new data
+        localStorage.setItem('dashboardData', 'uploaded');
+
+        // Initialize charts after data is loaded
+        initializeCharts(Chart);
+        initAIChat();
+        initAIInsights('#summary').catch(err => {
+            console.warn('AI Insights failed to load:', err.message);
+        });
     });
 
     console.log('Dashboard initialized successfully');
