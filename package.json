@@ -1,0 +1,30 @@
+{
+  "name": "wagdy-investment-dashboard",
+  "version": "1.0.0",
+  "description": "Investment Analytics Dashboard for Nahdi Medical Company with AI capabilities",
+  "main": "src/scripts/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/**/*.js"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.1",
+    "pdfjs-dist": "^4.0.379"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "vite": "^7.3.1"
+  },
+  "keywords": [
+    "investment",
+    "dashboard",
+    "analytics",
+    "nahdi",
+    "ai"
+  ],
+  "author": "Wagdy",
+  "license": "MIT"
+}

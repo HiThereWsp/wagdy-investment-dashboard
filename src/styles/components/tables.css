@@ -1,0 +1,207 @@
+/* ============================================
+   Tables & Data Display Styles
+   ============================================ */
+
+/* Qualitative Table */
+.qual-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.qual-table th {
+    text-align: left;
+    padding: 16px;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.qual-table th:first-child {
+    border-radius: 8px 0 0 0;
+}
+
+.qual-table th:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+.qual-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.qual-table tr:last-child td {
+    border-bottom: none;
+}
+
+.qual-table tr:hover td {
+    background: var(--bg-elevated);
+}
+
+.qual-table .amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+}
+
+.qual-table .amount.positive {
+    color: var(--positive);
+}
+
+.qual-table .amount.negative {
+    color: var(--negative);
+}
+
+.qual-table .tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.qual-table .tag.recurring {
+    background: var(--accent-gold-dim);
+    color: var(--accent-gold);
+}
+
+.qual-table .tag.one-time {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+}
+
+/* Dividend Card */
+.dividend-card {
+    background: linear-gradient(135deg, var(--accent-gold-dim), transparent);
+    border: 1px solid var(--border-accent);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 24px;
+}
+
+.dividend-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent-gold);
+    margin-bottom: 16px;
+}
+
+.dividend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.dividend-item {
+    text-align: center;
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: 12px;
+}
+
+.dividend-item .year {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.dividend-item .amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin: 8px 0;
+}
+
+.dividend-item .note {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+/* Cash Position */
+.cash-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.cash-item {
+    background: var(--bg-elevated);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+.cash-item .label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.cash-item .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    margin-top: 8px;
+}
+
+/* Conclusion Card */
+.conclusion-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 32px;
+    margin-top: 48px;
+}
+
+.conclusion-card h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+    margin-bottom: 16px;
+}
+
+.conclusion-card p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-elevated);
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    width: fit-content;
+}
+
+.tab {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    color: var(--text-secondary);
+}
+
+.tab.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}

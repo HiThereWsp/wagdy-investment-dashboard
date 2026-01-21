@@ -1,0 +1,12 @@
+/* ============================================
+   Wagdy Investment Dashboard - Style Index
+   Import all component styles
+   ============================================ */
+
+@import './main.css';
+@import './components/sidebar.css';
+@import './components/header.css';
+@import './components/kpi-cards.css';
+@import './components/charts.css';
+@import './components/tables.css';
+@import './components/ai-chat.css';
