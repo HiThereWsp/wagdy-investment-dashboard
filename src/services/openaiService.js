@@ -1,79 +1,44 @@
 /**
  * OpenAI Service Module
- * Handles all AI-powered features for the investment dashboard
+ * Handles all AI-powered features via secure serverless API
  */
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-const API_URL = 'https://api.openai.com/v1/chat/completions';
+// Use relative path for API - works in both dev and production
+const API_URL = '/api/chat';
 
 /**
- * Send a request to OpenAI API
+ * Send a request to our secure API endpoint
  */
-async function callOpenAI(messages, options = {}) {
+async function callAPI(action, data, messages = null) {
     const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: options.model || 'gpt-4-turbo-preview',
-            messages,
-            max_tokens: options.maxTokens || 4096,
-            temperature: options.temperature || 0.7
+            action,
+            data,
+            messages
         })
     });
 
     if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error?.message || 'OpenAI API error');
+        throw new Error(error.error || 'API error');
     }
 
-    const data = await response.json();
-    return data.choices[0].message.content;
+    const result = await response.json();
+    return result.result;
 }
 
 /**
  * Extract financial data from text content
  */
 export async function extractFinancialData(textContent) {
-    const systemPrompt = `You are a financial data extraction expert. Extract structured financial data from the provided text.
-
-Return a JSON object with the following structure:
-{
-    "companyName": "string",
-    "fiscalYear": "string",
-    "revenue": { "value": number, "currency": "SAR", "unit": "millions" },
-    "netProfit": { "value": number, "currency": "SAR", "unit": "millions" },
-    "grossMargin": { "value": number, "unit": "percent" },
-    "netMargin": { "value": number, "unit": "percent" },
-    "totalAssets": { "value": number, "currency": "SAR", "unit": "millions" },
-    "totalLiabilities": { "value": number, "currency": "SAR", "unit": "millions" },
-    "totalEquity": { "value": number, "currency": "SAR", "unit": "millions" },
-    "currentRatio": number,
-    "debtToEquity": number,
-    "operatingCashFlow": { "value": number, "currency": "SAR", "unit": "millions" },
-    "dividendPerShare": { "value": number, "currency": "SAR" },
-    "roe": { "value": number, "unit": "percent" },
-    "keyHighlights": ["string"],
-    "risks": ["string"]
-}
-
-Only include fields where you can find reliable data. Return valid JSON only.`;
-
-    const messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Extract financial data from this text:\n\n${textContent}` }
-    ];
-
-    const response = await callOpenAI(messages, { temperature: 0.3 });
-
     try {
-        // Parse JSON from response (handle markdown code blocks)
-        const jsonMatch = response.match(/```json\n?([\s\S]*?)\n?```/) || [null, response];
-        return JSON.parse(jsonMatch[1] || response);
+        return await callAPI('extract', textContent);
     } catch (e) {
-        console.error('Failed to parse financial data:', e);
+        console.error('Failed to extract financial data:', e);
         return null;
     }
 }
@@ -82,84 +47,24 @@ Only include fields where you can find reliable data. Return valid JSON only.`;
  * Generate investment insights from financial data
  */
 export async function generateInsights(financialData) {
-    const systemPrompt = `You are a senior financial analyst. Analyze the provided financial data and generate actionable investment insights.
-
-Focus on:
-1. Profitability trends
-2. Liquidity position
-3. Debt management
-4. Growth indicators
-5. Key risks and opportunities
-6. Investment recommendation (Buy/Hold/Sell with reasoning)
-
-Be specific, use numbers, and keep the analysis professional and concise.`;
-
-    const messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analyze this financial data and provide investment insights:\n\n${JSON.stringify(financialData, null, 2)}` }
-    ];
-
-    return await callOpenAI(messages);
+    return await callAPI('insights', financialData);
 }
 
 /**
  * Answer questions about financial data
  */
 export async function queryFinancialData(question, financialData) {
-    const systemPrompt = `You are a helpful financial assistant for an investment dashboard. Answer questions about the company's financial data accurately and concisely.
-
-Available financial data:
-${JSON.stringify(financialData, null, 2)}
-
-Guidelines:
-- Be precise with numbers
-- If data is not available, say so
-- Provide context when helpful
-- Keep answers concise but complete`;
-
-    const messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: question }
-    ];
-
-    return await callOpenAI(messages, { temperature: 0.5 });
+    return await callAPI('query', financialData, question);
 }
 
 /**
  * Detect anomalies in financial data
  */
-export async function detectAnomalies(financialData, historicalData) {
-    const systemPrompt = `You are a financial auditor specialized in anomaly detection. Analyze the financial data for unusual patterns, discrepancies, or red flags.
-
-Look for:
-1. Unusual changes in key ratios (>20% YoY change)
-2. Inconsistencies between related metrics
-3. Revenue/profit divergence
-4. Cash flow concerns
-5. Debt level changes
-
-Return a JSON array of anomalies:
-[
-    {
-        "metric": "string",
-        "severity": "low|medium|high",
-        "description": "string",
-        "recommendation": "string"
-    }
-]`;
-
-    const messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Current data:\n${JSON.stringify(financialData, null, 2)}\n\nHistorical data:\n${JSON.stringify(historicalData, null, 2)}` }
-    ];
-
-    const response = await callOpenAI(messages, { temperature: 0.3 });
-
+export async function detectAnomalies(financialData, historicalData = null) {
     try {
-        const jsonMatch = response.match(/```json\n?([\s\S]*?)\n?```/) || [null, response];
-        return JSON.parse(jsonMatch[1] || response);
+        return await callAPI('anomalies', { current: financialData, historical: historicalData });
     } catch (e) {
-        console.error('Failed to parse anomalies:', e);
+        console.error('Failed to detect anomalies:', e);
         return [];
     }
 }
@@ -168,22 +73,7 @@ Return a JSON array of anomalies:
  * Generate executive summary
  */
 export async function generateExecutiveSummary(financialData) {
-    const systemPrompt = `You are a financial analyst preparing an executive summary for investors.
-
-Create a brief, professional summary (3-4 paragraphs) covering:
-1. Company performance overview
-2. Key financial highlights
-3. Risk factors
-4. Outlook
-
-Use specific numbers from the data. Be objective and professional.`;
-
-    const messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Generate an executive summary for:\n\n${JSON.stringify(financialData, null, 2)}` }
-    ];
-
-    return await callOpenAI(messages);
+    return await callAPI('summary', financialData);
 }
 
 export default {
