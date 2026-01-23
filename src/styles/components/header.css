@@ -28,6 +28,12 @@
     font-size: 0.9rem;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 .header-meta {
     text-align: right;
 }

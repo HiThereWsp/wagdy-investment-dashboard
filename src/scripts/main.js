@@ -10,6 +10,10 @@ import { initFileUpload } from './fileUpload.js';
 import { initAIChat } from './components/aiChat.js';
 import { initAIInsights } from './components/aiInsights.js';
 import { initOnboarding } from './components/onboarding.js';
+import { initReportNavigation, updateNavigation } from './components/reportNavigation.js';
+import { getCurrentReport, getReportCount } from './components/reportStore.js';
+import { updateDashboardContent } from './components/dashboardUpdater.js';
+import { getFinancialData } from './data/financialData.js';
 import '../styles/index.css';
 
 /**
@@ -24,23 +28,41 @@ async function initApp() {
     // Initialize file upload
     initFileUpload();
 
-    // Initialize onboarding (will show empty state if no data)
-    initOnboarding();
+    // Initialize report navigation
+    initReportNavigation();
 
-    // Check if we have data loaded (demo or uploaded)
-    const hasData = localStorage.getItem('dashboardData');
+    // Check if we have cached reports
+    const reportCount = getReportCount();
+    const currentReport = getCurrentReport();
 
-    if (hasData) {
-        // Initialize charts only if data is available
+    if (reportCount > 0 && currentReport) {
+        // We have cached reports - show dashboard
+        localStorage.setItem('dashboardData', 'uploaded');
+        updateDashboardContent(getFinancialData());
         initializeCharts(Chart);
-
-        // Initialize AI components
         initAIChat();
-
-        // Load AI insights (async, non-blocking)
         initAIInsights('#summary').catch(err => {
             console.warn('AI Insights failed to load:', err.message);
         });
+    } else {
+        // Initialize onboarding (will show empty state if no data)
+        initOnboarding();
+
+        // Check if we have data loaded (demo or uploaded)
+        const hasData = localStorage.getItem('dashboardData');
+
+        if (hasData) {
+            // Initialize charts only if data is available
+            initializeCharts(Chart);
+
+            // Initialize AI components
+            initAIChat();
+
+            // Load AI insights (async, non-blocking)
+            initAIInsights('#summary').catch(err => {
+                console.warn('AI Insights failed to load:', err.message);
+            });
+        }
     }
 
     // Listen for file processing events
@@ -49,11 +71,32 @@ async function initApp() {
         localStorage.setItem('dashboardData', 'uploaded');
 
         // Initialize charts after data is loaded
+        const currentData = getFinancialData();
+        updateDashboardContent(currentData);
         initializeCharts(Chart);
         initAIChat();
         initAIInsights('#summary').catch(err => {
             console.warn('AI Insights failed to load:', err.message);
         });
+
+        // Update navigation
+        updateNavigation();
+    });
+
+    // Listen for report change events (navigation between cached reports)
+    window.addEventListener('reportChanged', (e) => {
+        console.log('Report changed:', e.detail);
+        if (e.detail.report) {
+            // Reinitialize charts and content with new data
+            const currentData = getFinancialData();
+            updateDashboardContent(currentData);
+            initializeCharts(Chart);
+
+            // Reload AI Insights
+            initAIInsights('#summary').catch(err => {
+                console.warn('AI Insights failed to load:', err.message);
+            });
+        }
     });
 
     console.log('Dashboard initialized successfully');

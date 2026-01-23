@@ -74,6 +74,37 @@
     color: var(--text-muted);
 }
 
+/* Event badges for qualitative insights */
+.event-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-right: 6px;
+}
+
+.event-badge.recurring {
+    background: var(--accent-gold-dim);
+    color: var(--accent-gold);
+}
+
+.event-badge.one-time {
+    background: var(--negative-dim);
+    color: var(--negative);
+}
+
+.event-category {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    text-transform: capitalize;
+}
+
 /* Dividend Card */
 .dividend-card {
     background: linear-gradient(135deg, var(--accent-gold-dim), transparent);
@@ -159,21 +190,56 @@
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: 16px;
-    padding: 32px;
+    padding: 32px 36px;
     margin-top: 48px;
 }
 
-.conclusion-card h3 {
+.conclusion-card > h3 {
     font-family: 'Instrument Serif', serif;
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 400;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+}
+
+.conclusion-content {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.85;
+}
+
+.conclusion-content h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: var(--accent-gold);
+    margin: 28px 0 16px 0;
+}
+
+.conclusion-content h3:first-child {
+    margin-top: 0;
+}
+
+.conclusion-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 24px 0 12px 0;
+}
+
+.conclusion-content p {
     margin-bottom: 16px;
 }
 
-.conclusion-card p {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.8;
+.conclusion-content p:last-child {
+    margin-bottom: 0;
+}
+
+.conclusion-content strong {
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 /* Tabs */

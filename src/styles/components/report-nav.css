@@ -1,0 +1,111 @@
+/**
+ * Report Navigation Styles
+ */
+
+.report-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px;
+}
+
+.report-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.report-nav-btn:hover:not(:disabled) {
+    background: var(--bg-elevated);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.report-nav-btn.reset {
+    margin-left: 8px;
+    border-color: var(--negative-dim);
+    color: var(--negative);
+}
+
+.report-nav-btn.reset:hover {
+    background: var(--negative-dim);
+    border-color: var(--negative);
+    color: var(--negative);
+}
+
+.report-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.report-nav-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.report-nav-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 150px;
+}
+
+.report-nav-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.report-nav-counter {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+/* Container in header */
+#reportNavContainer {
+    display: flex;
+    align-items: center;
+}
+
+#reportNavContainer:empty {
+    display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .report-nav {
+        padding: 6px 12px;
+        gap: 8px;
+    }
+
+    .report-nav-info {
+        min-width: 100px;
+    }
+
+    .report-nav-name {
+        font-size: 0.75rem;
+        max-width: 120px;
+    }
+
+    .report-nav-btn {
+        width: 28px;
+        height: 28px;
+    }
+}

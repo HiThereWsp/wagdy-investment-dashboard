@@ -3,19 +3,18 @@
  */
 
 import { colors, tooltipConfig, gridConfig } from '../config/chartConfig.js';
-import { financialData } from '../data/financialData.js';
 
-export function createRevenueChart(Chart, canvasId) {
+export function createRevenueChart(Chart, canvasId, data) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
 
     return new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: financialData.years,
+            labels: data.years,
             datasets: [{
                 label: 'Revenue (SAR Billions)',
-                data: financialData.revenue.map(v => v / 1000),
+                data: data.revenue.map(v => v / 1000),
                 backgroundColor: colors.goldDim,
                 borderColor: colors.gold,
                 borderWidth: 2,

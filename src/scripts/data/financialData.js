@@ -4,7 +4,183 @@
  * Data sources: 2022-2023 from annual reports, 2021 simulated
  */
 
-export const financialData = {
+import { getCurrentReport } from '../components/reportStore.js';
+
+/**
+ * Get current financial data (from report or demo)
+ */
+export function getFinancialData() {
+    const report = getCurrentReport();
+
+    if (report && report.extractedData) {
+        return transformExtractedData(report.extractedData);
+    }
+
+    return demoFinancialData;
+}
+
+/**
+ * Normalize company name for comparison
+ */
+function normalizeCompanyName(name) {
+    if (!name) return 'Company';
+    // Remove common prefixes/suffixes and normalize
+    return name
+        .replace(/^(AL\s+)/i, '')           // Remove "AL " prefix
+        .replace(/\s+(COMPANY|CO\.?|LTD\.?|INC\.?)$/i, ' Company')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+}
+
+/**
+ * Helper to extract value from AI data (handles both { value: X } and raw X formats)
+ */
+function getValue(field, defaultVal = 0) {
+    if (field === null || field === undefined) return defaultVal;
+    if (typeof field === 'number') return field;
+    if (typeof field === 'object' && field.value !== undefined) {
+        return typeof field.value === 'number' ? field.value : defaultVal;
+    }
+    if (typeof field === 'string') {
+        const parsed = parseFloat(field.replace(/[^0-9.-]/g, ''));
+        return isNaN(parsed) ? defaultVal : parsed;
+    }
+    return defaultVal;
+}
+
+/**
+ * Helper to normalize values to millions SAR
+ * If value > 100,000, assume it's in raw SAR and convert to millions
+ */
+function toMillions(value) {
+    if (!value || value === 0) return 0;
+    // If > 100,000, likely in raw SAR, convert to millions
+    if (Math.abs(value) > 100000) return value / 1000000;
+    return value;
+}
+
+/**
+ * Transform AI-extracted data to chart format
+ */
+function transformExtractedData(data) {
+    // Check if this is already merged/transformed data (has arrays)
+    if (data.years && Array.isArray(data.years) && data.years.length > 0 && Array.isArray(data.revenue)) {
+        console.log('Data is already in merged format, passing through:', data);
+        // Normalize company name and return as-is
+        return {
+            ...data,
+            companyName: normalizeCompanyName(data.companyName),
+            // Ensure roe is the latest value for KPI display
+            roe: Array.isArray(data.roe) ? data.roe[data.roe.length - 1] : data.roe,
+            // Also keep totalEquity as alias for shareholderEquity
+            totalEquity: data.shareholderEquity || data.totalEquity
+        };
+    }
+
+    // Debug: log raw extracted data
+    console.log('Raw extracted data:', JSON.stringify(data, null, 2));
+
+    // Extract values with helpers that handle both formats
+    const revenue = toMillions(getValue(data.revenue));
+    const netProfit = toMillions(getValue(data.netProfit));
+    const grossMargin = getValue(data.grossMargin);
+    const totalLiabilities = toMillions(getValue(data.totalLiabilities));
+    const shareholderEquity = toMillions(getValue(data.shareholderEquity));
+    const currentAssets = toMillions(getValue(data.currentAssets));
+    const currentLiabilities = toMillions(getValue(data.currentLiabilities));
+
+    // Calculate derived metrics with fallbacks
+    let netMargin = getValue(data.netMargin);
+    if (!netMargin && revenue > 0) {
+        netMargin = (netProfit / revenue) * 100;
+    }
+
+    let currentRatio = getValue(data.currentRatio);
+    if (!currentRatio && currentLiabilities > 0) {
+        currentRatio = currentAssets / currentLiabilities;
+    }
+
+    let debtToEquity = getValue(data.debtToEquity);
+    if (!debtToEquity && shareholderEquity > 0) {
+        debtToEquity = totalLiabilities / shareholderEquity;
+    }
+
+    let roe = getValue(data.roe);
+    if (!roe && shareholderEquity > 0) {
+        roe = (netProfit / shareholderEquity) * 100;
+    }
+
+    // Debug: log calculated values with explicit formatting
+    console.log(`Transformed values for ${data.companyName} (${data.fiscalYear}):
+    - revenue: ${revenue}M SAR
+    - netProfit: ${netProfit}M SAR
+    - grossMargin: ${grossMargin}%
+    - netMargin: ${netMargin?.toFixed(2)}%
+    - currentRatio: ${currentRatio?.toFixed(2)}x
+    - debtToEquity: ${debtToEquity?.toFixed(2)}x
+    - ROE: ${roe?.toFixed(2)}%
+    - totalLiabilities: ${totalLiabilities}M SAR
+    - shareholderEquity: ${shareholderEquity}M SAR`);
+
+    // Create single-year data arrays (for charts that expect arrays)
+    const year = data.fiscalYear || 'N/A';
+    const companyName = normalizeCompanyName(data.companyName);
+
+    return {
+        companyName: companyName,
+        fiscalYear: year,
+        years: [year],
+
+        // Revenue in millions SAR
+        revenue: [revenue],
+
+        // Profitability Margins (%)
+        grossMargin: [grossMargin],
+        netMargin: [netMargin],
+
+        // Net Profit in millions SAR
+        netProfit: [netProfit],
+
+        // Liquidity Ratios
+        currentRatio: [currentRatio],
+        debtToEquity: [debtToEquity],
+
+        // Balance Sheet Items (millions SAR)
+        totalLiabilities: [totalLiabilities],
+        totalEquity: [shareholderEquity],
+
+        // Cash Flow - use estimates if not available
+        operatingCashFlow: [data.operatingCashFlow?.value || netProfit * 1.2],
+        investingCashFlow: [data.investingCashFlow?.value || -netProfit * 0.3],
+        financingCashFlow: [data.financingCashFlow?.value || -netProfit * 0.5],
+
+        // Free Cash Flow
+        fcf: [data.fcf?.value || netProfit * 0.9],
+
+        // Revenue Segments (%)
+        segmentPharma: data.segmentPharma || 65,
+        segmentFrontShop: data.segmentFrontShop || 35,
+
+        // Additional metrics
+        roe: roe,
+        eps: data.eps?.value || 0,
+        dividends: data.dividends ? { [year]: getValue(data.dividends) } : null,
+        cashEquivalents: data.cashEquivalents ? { [year]: toMillions(getValue(data.cashEquivalents)) } : null,
+
+        // Raw extracted data for reference
+        _extracted: data
+    };
+}
+
+/**
+ * Demo/static financial data
+ */
+const demoFinancialData = {
+    companyName: 'Nahdi Medical Company',
+    fiscalYear: '2023',
     years: ['2021', '2022', '2023'],
 
     // Revenue in millions SAR
@@ -139,4 +315,7 @@ export const qualitativeEvents = [
     }
 ];
 
-export default financialData;
+// Backward compatibility - static reference
+export const financialData = demoFinancialData;
+
+export default { getFinancialData, financialData: demoFinancialData };

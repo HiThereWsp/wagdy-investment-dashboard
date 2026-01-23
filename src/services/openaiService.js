@@ -76,10 +76,37 @@ export async function generateExecutiveSummary(financialData) {
     return await callAPI('summary', financialData);
 }
 
+/**
+ * Generate risk analysis summary
+ */
+export async function generateRiskAnalysis(financialData) {
+    return await callAPI('risk', financialData);
+}
+
+/**
+ * Extract qualitative events (one-time vs recurring) from annual report text
+ * Identifies profit fluctuation reasons from footnotes
+ */
+export async function extractQualitativeEvents(textContent) {
+    try {
+        const result = await callAPI('extractQualitative', textContent);
+        // Ensure we return an array
+        if (Array.isArray(result)) {
+            return result;
+        }
+        return [];
+    } catch (e) {
+        console.error('Failed to extract qualitative events:', e);
+        return [];
+    }
+}
+
 export default {
     extractFinancialData,
     generateInsights,
     queryFinancialData,
     detectAnomalies,
-    generateExecutiveSummary
+    generateExecutiveSummary,
+    generateRiskAnalysis,
+    extractQualitativeEvents
 };

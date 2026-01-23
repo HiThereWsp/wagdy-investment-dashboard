@@ -3,20 +3,26 @@
  */
 
 import { colors, tooltipConfig, gridConfig, legendConfig } from '../config/chartConfig.js';
-import { financialData } from '../data/financialData.js';
 
-export function createMarginsChart(Chart, canvasId) {
+export function createMarginsChart(Chart, canvasId, data) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
+
+    // Calculate dynamic y-axis range
+    const allValues = [...data.grossMargin, ...data.netMargin];
+    const minVal = Math.min(...allValues);
+    const maxVal = Math.max(...allValues);
+    const yMin = Math.max(0, minVal - 5);
+    const yMax = maxVal + 5;
 
     return new Chart(ctx, {
         type: 'line',
         data: {
-            labels: financialData.years,
+            labels: data.years,
             datasets: [
                 {
                     label: 'Gross Margin',
-                    data: financialData.grossMargin,
+                    data: data.grossMargin,
                     borderColor: colors.blue,
                     backgroundColor: colors.blueDim,
                     fill: true,
@@ -26,7 +32,7 @@ export function createMarginsChart(Chart, canvasId) {
                 },
                 {
                     label: 'Net Margin',
-                    data: financialData.netMargin,
+                    data: data.netMargin,
                     borderColor: colors.gold,
                     backgroundColor: colors.goldDim,
                     fill: true,
@@ -50,8 +56,8 @@ export function createMarginsChart(Chart, canvasId) {
             },
             scales: {
                 y: {
-                    min: 0,
-                    max: 40,
+                    min: yMin,
+                    max: yMax,
                     grid: gridConfig,
                     ticks: { callback: v => v + '%' }
                 },

@@ -2,12 +2,25 @@
  * File Upload Module
  * Handles PDF file uploads for annual reports
  * Integrates with AI for data extraction
+ * Supports multi-file upload and merging
  */
 
-import { extractFinancialData } from '../services/openaiService.js';
+import { extractFinancialData, extractQualitativeEvents } from '../services/openaiService.js';
+import { showLoading, updateLoadingStep, hideLoading } from './components/loadingOverlay.js';
+import { addReport, addMergedReport } from './components/reportStore.js';
+
+// Helper to update file status in onboarding UI (if visible)
+function updateFileStatusSafe(index, status) {
+    const statusEl = document.getElementById(`fileStatus${index}`);
+    if (statusEl) {
+        statusEl.textContent = status;
+        statusEl.className = `file-status ${status.toLowerCase().replace(/\s+/g, '-')}`;
+    }
+}
 
 // Store extracted data globally
 let extractedData = null;
+let allExtractedData = [];
 
 /**
  * Initialize file upload functionality
@@ -18,12 +31,15 @@ export function initFileUpload() {
 
     if (!uploadZone || !fileInput) return;
 
+    // Enable multiple file selection
+    fileInput.setAttribute('multiple', 'true');
+
     // Click to upload
     uploadZone.addEventListener('click', () => {
         fileInput.click();
     });
 
-    // Handle file selection
+    // Handle file selection (single or multiple)
     fileInput.addEventListener('change', handleFileUpload);
 
     // Drag and drop support
@@ -39,9 +55,21 @@ export function initFileUpload() {
     uploadZone.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadZone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+        if (files.length === 1) {
             processFile(files[0]);
+        } else if (files.length > 1) {
+            processMultipleFiles(files.slice(0, 3));
+        }
+    });
+
+    // Listen for multiple files selected event from onboarding
+    window.addEventListener('multipleFilesSelected', (e) => {
+        const { files } = e.detail;
+        if (files.length === 1) {
+            processFile(files[0]);
+        } else if (files.length > 1) {
+            processMultipleFiles(files);
         }
     });
 }
@@ -50,33 +78,255 @@ export function initFileUpload() {
  * Handle file upload event
  */
 function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-        processFile(file);
+    const files = Array.from(event.target.files).filter(f => f.type === 'application/pdf');
+    if (files.length === 1) {
+        processFile(files[0]);
+    } else if (files.length > 1) {
+        processMultipleFiles(files.slice(0, 3));
     }
 }
 
 /**
- * Extract text from PDF using browser FileReader
- * Note: For production, consider using pdf.js for better extraction
+ * Extract text from PDF using pdf.js library
  */
 async function extractTextFromPDF(file) {
-    // For now, we'll read the file and extract what we can
-    // In production, use pdf.js library for proper PDF parsing
+    // Dynamically import pdf.js
+    const pdfjsLib = await import('pdfjs-dist');
+
+    // Set worker source
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.min.mjs',
+        import.meta.url
+    ).href;
+
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                // Try to extract text (basic approach)
-                const text = e.target.result;
-                resolve(text);
+                const typedArray = new Uint8Array(e.target.result);
+                const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+
+                let fullText = '';
+
+                // Extract text from all pages
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items
+                        .map(item => item.str)
+                        .join(' ');
+                    fullText += pageText + '\n';
+                }
+
+                resolve(fullText);
             } catch (err) {
                 reject(err);
             }
         };
         reader.onerror = reject;
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
     });
+}
+
+/**
+ * Process multiple uploaded files
+ * @param {File[]} files - Array of uploaded files
+ */
+async function processMultipleFiles(files) {
+    const uploadZone = document.querySelector('.upload-zone');
+    allExtractedData = [];
+
+    // Show loading
+    showLoading('extracting');
+
+    try {
+        // Process each file sequentially
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            updateFileStatusSafe(i, 'Processing');
+
+            // Extract text from PDF
+            updateLoadingStep('extracting');
+            const textContent = await extractTextFromPDF(file);
+
+            // Send to AI for data extraction
+            updateLoadingStep('analyzing');
+            const data = await extractFinancialData(textContent);
+
+            if (data) {
+                // Extract qualitative events for this file
+                const qualEvents = await extractQualitativeEvents(textContent);
+                if (qualEvents && qualEvents.length > 0) {
+                    data.qualitativeEvents = qualEvents;
+                }
+
+                data._fileName = file.name;
+                allExtractedData.push(data);
+                updateFileStatusSafe(i, 'Done');
+            } else {
+                updateFileStatusSafe(i, 'Error');
+            }
+        }
+
+        if (allExtractedData.length > 0) {
+            // Merge all extracted data
+            updateLoadingStep('rendering');
+            const mergedData = mergeExtractedData(allExtractedData);
+
+            // Save merged report
+            const fileNames = files.map(f => f.name).join(', ');
+            const report = addMergedReport({
+                fileName: fileNames,
+                companyName: mergedData.companyName,
+                fiscalYears: mergedData.years,
+                extractedData: mergedData
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+            hideLoading();
+
+            if (uploadZone) {
+                showSuccess(uploadZone, `${allExtractedData.length} files processed`);
+            }
+
+            // Emit event for merged data
+            window.dispatchEvent(new CustomEvent('fileProcessed', {
+                detail: {
+                    fileName: fileNames,
+                    extractedData: mergedData,
+                    report,
+                    isMerged: true
+                }
+            }));
+
+            // Emit all files processed event
+            window.dispatchEvent(new CustomEvent('allFilesProcessed'));
+
+            showDataNotification(mergedData);
+        } else {
+            hideLoading();
+            if (uploadZone) {
+                showError(uploadZone, 'Could not extract data from PDFs');
+            }
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Multi-file processing error:', error);
+        if (uploadZone) {
+            showError(uploadZone, error.message || 'Failed to process files');
+        }
+    }
+}
+
+/**
+ * Merge extracted data from multiple PDFs
+ * Combines data from multiple years into a single dataset
+ */
+function mergeExtractedData(dataArray) {
+    // Sort by fiscal year
+    dataArray.sort((a, b) => {
+        const yearA = parseInt(a.fiscalYear) || 0;
+        const yearB = parseInt(b.fiscalYear) || 0;
+        return yearA - yearB;
+    });
+
+    // Use the most recent company name
+    const companyName = dataArray[dataArray.length - 1].companyName || 'Company';
+
+    // Initialize merged data structure
+    const merged = {
+        companyName,
+        fiscalYear: dataArray[dataArray.length - 1].fiscalYear,
+        years: [],
+        revenue: [],
+        grossProfit: [],
+        netProfit: [],
+        grossMargin: [],
+        netMargin: [],
+        totalAssets: [],
+        currentAssets: [],
+        totalLiabilities: [],
+        currentLiabilities: [],
+        shareholderEquity: [],
+        roe: [],
+        currentRatio: [],
+        debtToEquity: [],
+        eps: [],
+        operatingCashFlow: [],
+        investingCashFlow: [],
+        financingCashFlow: [],
+        fcf: [],
+        dividends: {},
+        cashEquivalents: {},
+        qualitativeEvents: [],
+        _sources: dataArray.map(d => ({ year: d.fiscalYear, file: d._fileName }))
+    };
+
+    // Helper to get numeric value
+    const getVal = (obj, key) => {
+        const val = obj[key];
+        if (val === null || val === undefined) return null;
+        if (typeof val === 'number') return val;
+        if (typeof val === 'object' && val.value !== undefined) return val.value;
+        return null;
+    };
+
+    // Merge data from each year
+    dataArray.forEach(data => {
+        const year = data.fiscalYear || 'N/A';
+        merged.years.push(year);
+
+        // Revenue and profit metrics
+        merged.revenue.push(getVal(data, 'revenue') || 0);
+        merged.grossProfit.push(getVal(data, 'grossProfit') || 0);
+        merged.netProfit.push(getVal(data, 'netProfit') || 0);
+
+        // Margins
+        merged.grossMargin.push(getVal(data, 'grossMargin') || 0);
+        merged.netMargin.push(getVal(data, 'netMargin') || 0);
+
+        // Balance sheet
+        merged.totalAssets.push(getVal(data, 'totalAssets') || 0);
+        merged.currentAssets.push(getVal(data, 'currentAssets') || 0);
+        merged.totalLiabilities.push(getVal(data, 'totalLiabilities') || 0);
+        merged.currentLiabilities.push(getVal(data, 'currentLiabilities') || 0);
+        merged.shareholderEquity.push(getVal(data, 'shareholderEquity') || 0);
+
+        // Ratios
+        merged.roe.push(getVal(data, 'roe') || 0);
+        merged.currentRatio.push(getVal(data, 'currentRatio') || 0);
+        merged.debtToEquity.push(getVal(data, 'debtToEquity') || 0);
+        merged.eps.push(getVal(data, 'eps') || 0);
+
+        // Cash flow
+        merged.operatingCashFlow.push(getVal(data, 'operatingCashFlow') || 0);
+        merged.investingCashFlow.push(getVal(data, 'investingCashFlow') || 0);
+        merged.financingCashFlow.push(getVal(data, 'financingCashFlow') || 0);
+        merged.fcf.push(getVal(data, 'fcf') || 0);
+
+        // Dividends and cash
+        if (data.dividends) {
+            merged.dividends[year] = getVal(data, 'dividends') || getVal(data.dividends, year);
+        }
+        if (data.cashEquivalents || data.cash) {
+            merged.cashEquivalents[year] = getVal(data, 'cashEquivalents') || getVal(data, 'cash') || 0;
+        }
+
+        // Collect qualitative events
+        if (data.qualitativeEvents && data.qualitativeEvents.length > 0) {
+            merged.qualitativeEvents.push(...data.qualitativeEvents);
+        }
+    });
+
+    // Sort qualitative events by year
+    merged.qualitativeEvents.sort((a, b) => {
+        const yearA = parseInt(a.year) || 0;
+        const yearB = parseInt(b.year) || 0;
+        return yearB - yearA; // Most recent first
+    });
+
+    console.log('Merged data from', dataArray.length, 'files:', merged);
+    return merged;
 }
 
 /**
@@ -92,22 +342,43 @@ async function processFile(file) {
         return;
     }
 
-    // Show processing state
+    // Show full-screen loading overlay
+    showLoading('extracting');
     showProcessing(uploadZone, file.name);
 
     try {
         // Extract text from PDF
-        showProcessing(uploadZone, file.name, 'Extracting text...');
-
-        // Note: PDF text extraction requires pdf.js in production
-        // For now, we'll use a placeholder that can be enhanced
+        updateLoadingStep('extracting');
         const textContent = await extractTextFromPDF(file);
 
         // Send to AI for data extraction
-        showProcessing(uploadZone, file.name, 'AI analyzing...');
+        updateLoadingStep('analyzing');
         extractedData = await extractFinancialData(textContent);
 
         if (extractedData) {
+            // Extract qualitative events (one-time vs recurring)
+            const qualEvents = await extractQualitativeEvents(textContent);
+            if (qualEvents && qualEvents.length > 0) {
+                extractedData.qualitativeEvents = qualEvents;
+                console.log('Extracted qualitative events:', qualEvents.length);
+            }
+
+            // Update to rendering step
+            updateLoadingStep('rendering');
+
+            // Save report to store
+            const report = addReport({
+                fileName: file.name,
+                companyName: extractedData.companyName,
+                fiscalYear: extractedData.fiscalYear,
+                extractedData
+            });
+
+            // Small delay to show rendering step
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Hide loading overlay
+            hideLoading();
             showSuccess(uploadZone, file.name);
 
             // Emit custom event for data update
@@ -115,17 +386,23 @@ async function processFile(file) {
                 detail: {
                     fileName: file.name,
                     file,
-                    extractedData
+                    extractedData,
+                    report
                 }
             }));
+
+            // Emit all files processed event (for single file)
+            window.dispatchEvent(new CustomEvent('allFilesProcessed'));
 
             // Show notification about extracted data
             showDataNotification(extractedData);
         } else {
+            hideLoading();
             showError(uploadZone, 'Could not extract data from PDF');
         }
 
     } catch (error) {
+        hideLoading();
         showError(uploadZone, error.message || 'Failed to process file');
         console.error('File processing error:', error);
     }

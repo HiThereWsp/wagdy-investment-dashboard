@@ -4,7 +4,7 @@
  */
 
 import { generateInsights, generateExecutiveSummary, detectAnomalies } from '../../services/openaiService.js';
-import { financialData } from '../data/financialData.js';
+import { getFinancialData } from '../data/financialData.js';
 
 /**
  * Create AI Insights Panel HTML
@@ -70,8 +70,16 @@ function formatInsights(text) {
 async function loadInsights() {
     const contentEl = document.getElementById('aiInsightsContent');
 
+    // Show loading state
+    contentEl.innerHTML = `
+        <div class="ai-insights-loading">
+            <div class="spinner"></div>
+            <span>Generating AI insights...</span>
+        </div>
+    `;
+
     try {
-        const insights = await generateInsights(financialData);
+        const insights = await generateInsights(getFinancialData());
         contentEl.innerHTML = formatInsights(insights);
     } catch (error) {
         contentEl.innerHTML = `
@@ -89,7 +97,7 @@ async function loadInsights() {
 /**
  * Retry loading insights
  */
-window.retryInsights = async function() {
+window.retryInsights = async function () {
     const contentEl = document.getElementById('aiInsightsContent');
     contentEl.innerHTML = `
         <div class="ai-insights-loading">
@@ -107,6 +115,12 @@ export async function initAIInsights(targetSelector = '#summary') {
     const targetSection = document.querySelector(targetSelector);
     if (!targetSection) {
         console.warn('Target section not found for AI insights');
+        return;
+    }
+
+    // Check if panel already exists
+    if (document.getElementById('aiInsightsPanel')) {
+        await loadInsights();
         return;
     }
 
