@@ -128,56 +128,98 @@
 
 /* Help Section */
 .sidebar-help {
+    position: relative;
+    margin-top: 16px;
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-top: 20px;
-    padding: 14px;
+    justify-content: center;
+}
+
+.help-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     background: var(--bg-elevated);
-    border-radius: 10px;
-    opacity: 0.8;
-    transition: opacity 0.2s ease;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
 
-.sidebar-help:hover {
-    opacity: 1;
+.help-icon:hover {
+    background: var(--accent-gold-dim);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
 }
 
-.sidebar-help svg {
+.help-icon svg {
     width: 16px;
     height: 16px;
-    color: var(--text-muted);
-    flex-shrink: 0;
-    margin-top: 2px;
 }
 
-.help-text {
-    flex: 1;
+.help-tooltip {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+    width: 220px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    z-index: 100;
 }
 
-.help-text span {
+.help-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: var(--bg-card);
+}
+
+.sidebar-help:hover .help-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-tooltip span {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 4px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
 }
 
-.help-text p {
-    font-size: 0.65rem;
+.help-tooltip p {
+    font-size: 0.7rem;
     color: var(--text-muted);
     line-height: 1.5;
+    margin-bottom: 12px;
 }
 
-.help-text a {
+.help-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.help-links a {
+    font-size: 0.7rem;
     color: var(--accent-gold);
     text-decoration: none;
     transition: opacity 0.2s ease;
 }
 
-.help-text a:hover {
+.help-links a:hover {
     opacity: 0.8;
     text-decoration: underline;
 }
